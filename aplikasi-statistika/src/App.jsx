@@ -1,5 +1,6 @@
-
 import { useState } from 'react'
+import { db } from './firebase'
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import './App.css'
 
 import IdentitasSiswa from './pages/IdentitasSiswa'
@@ -11,9 +12,20 @@ function App() {
   const [identitas, setIdentitas] = useState(null)
   const [halaman, setHalaman] = useState('beranda')
 
-  function mulaiBelajar(data) {
-    setIdentitas(data)
-    setHalaman('beranda')
+  async function mulaiBelajar(data) {
+    try {
+      await addDoc(collection(db, 'nilai_siswa'), {
+        nama: data.nama,
+        kelas: data.kelas,
+        createdAt: serverTimestamp()
+      })
+
+      setIdentitas(data)
+      setHalaman('beranda')
+    } catch (error) {
+      console.error('Gagal menyimpan data:', error)
+      alert('Data siswa gagal disimpan. Coba lagi ya!')
+    }
   }
 
   return (
@@ -131,7 +143,7 @@ function App() {
               ) : halaman === 'lingkaran' ? (
                 <DiagramLingkaran />
               ) : (
-                <LatihanSoal />
+                <LatihanSoal identitas={identitas} />
               )}
             </main>
           )}
