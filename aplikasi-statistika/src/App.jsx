@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { db } from './firebase'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import './App.css'
@@ -7,6 +7,111 @@ import IdentitasSiswa from './pages/IdentitasSiswa'
 import DiagramGaris from './pages/DiagramGaris'
 import DiagramLingkaran from './pages/DiagramLingkaran'
 import LatihanSoal from './pages/LatihanSoal'
+
+function MusikLatar() {
+  const [aktif, setAktif] = useState(false)
+  const audioRef = useRef(null)
+  const timerRef = useRef(null)
+  const nadaRef = useRef(0)
+
+  const nada = [
+    523.25, 587.33, 659.25, 783.99,
+    659.25, 587.33, 523.25, 440,
+    523.25, 659.25, 783.99, 880,
+    783.99, 659.25, 587.33, 523.25
+  ]
+
+  function mainkanNada() {
+    const audio = audioRef.current
+    if (!audio) return
+
+    const sekarang = audio.currentTime
+    const oscillator = audio.createOscillator()
+    const volume = audio.createGain()
+
+    oscillator.type = 'sine'
+    oscillator.frequency.value = nada[nadaRef.current]
+
+    volume.gain.setValueAtTime(0.0001, sekarang)
+    volume.gain.linearRampToValueAtTime(0.035, sekarang + 0.08)
+    volume.gain.exponentialRampToValueAtTime(0.0001, sekarang + 0.55)
+
+    oscillator.connect(volume)
+    volume.connect(audio.destination)
+
+    oscillator.start(sekarang)
+    oscillator.stop(sekarang + 0.6)
+
+    nadaRef.current = (nadaRef.current + 1) % nada.length
+  }
+
+  async function toggleMusik() {
+    if (aktif) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+
+      if (audioRef.current) {
+        await audioRef.current.close()
+        audioRef.current = null
+      }
+
+      setAktif(false)
+      return
+    }
+
+    const AudioContext =
+      window.AudioContext || window.webkitAudioContext
+
+    if (!AudioContext) {
+      alert('Browser belum mendukung fitur musik.')
+      return
+    }
+
+    const audio = new AudioContext()
+    audioRef.current = audio
+
+    await audio.resume()
+
+    nadaRef.current = 0
+    mainkanNada()
+
+    timerRef.current = setInterval(mainkanNada, 500)
+    setAktif(true)
+  }
+
+  useEffect(() => {
+    return () => {
+      clearInterval(timerRef.current)
+
+      if (audioRef.current) {
+        audioRef.current.close()
+      }
+    }
+  }, [])
+
+  return (
+    <button
+      onClick={toggleMusik}
+      style={{
+        position: 'fixed',
+        bottom: '22px',
+        right: '22px',
+        zIndex: 9999,
+        border: 'none',
+        borderRadius: '30px',
+        padding: '13px 20px',
+        background: 'linear-gradient(135deg, #a78bfa, #ec4899)',
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: '14px',
+        cursor: 'pointer',
+        boxShadow: '0 5px 15px rgba(0,0,0,0.2)'
+      }}
+    >
+      {aktif ? '🔇 Matikan Musik' : '🎵 Putar Musik'}
+    </button>
+  )
+}
 
 function App() {
   const [identitas, setIdentitas] = useState(null)
@@ -43,7 +148,9 @@ function App() {
           <p>Belajar Matematika Jadi Petualangan Seru!</p>
           <div className="header-mascot">🧸</div>
         </div>
-      </header>
+            </header>
+
+      <MusikLatar />
 
       {!identitas ? (
         <IdentitasSiswa onMulai={mulaiBelajar} />
