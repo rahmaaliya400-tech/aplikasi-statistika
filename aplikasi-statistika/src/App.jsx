@@ -8,41 +8,78 @@ import DiagramGaris from './pages/DiagramGaris'
 import DiagramLingkaran from './pages/DiagramLingkaran'
 import LatihanSoal from './pages/LatihanSoal'
 
+
 function MusikLatar() {
   const [aktif, setAktif] = useState(false)
   const audioRef = useRef(null)
   const timerRef = useRef(null)
-  const nadaRef = useRef(0)
+  const langkahRef = useRef(0)
 
-  const nada = [
-    523.25, 587.33, 659.25, 783.99,
-    659.25, 587.33, 523.25, 440,
-    523.25, 659.25, 783.99, 880,
-    783.99, 659.25, 587.33, 523.25
+  const melodi = [
+    523, 659, 784, 659, 587, 698, 880, 698,
+    659, 784, 988, 784, 698, 880, 1047, 880,
+    784, 880, 988, 880, 784, 698, 659, 587,
+    523, 659, 784, 880, 784, 659, 587, 523,
+    659, 784, 880, 1047, 988, 880, 784, 659,
+    587, 698, 880, 988, 880, 698, 659, 523
   ]
 
-  function mainkanNada() {
+  const bass = [
+    131, 131, 165, 165,
+    110, 110, 147, 147,
+    131, 131, 165, 165,
+    98, 98, 147, 147
+  ]
+
+  function bunyikan(frekuensi, durasi, volume, tipe = 'sine') {
     const audio = audioRef.current
     if (!audio) return
 
-    const sekarang = audio.currentTime
+    const waktu = audio.currentTime
     const oscillator = audio.createOscillator()
-    const volume = audio.createGain()
+    const gain = audio.createGain()
 
-    oscillator.type = 'sine'
-    oscillator.frequency.value = nada[nadaRef.current]
+    oscillator.type = tipe
+    oscillator.frequency.value = frekuensi
 
-    volume.gain.setValueAtTime(0.0001, sekarang)
-    volume.gain.linearRampToValueAtTime(0.035, sekarang + 0.08)
-    volume.gain.exponentialRampToValueAtTime(0.0001, sekarang + 0.55)
+    gain.gain.setValueAtTime(0.001, waktu)
+    gain.gain.linearRampToValueAtTime(volume, waktu + 0.025)
+    gain.gain.exponentialRampToValueAtTime(
+      0.001,
+      waktu + durasi
+    )
 
-    oscillator.connect(volume)
-    volume.connect(audio.destination)
+    oscillator.connect(gain)
+    gain.connect(audio.destination)
 
-    oscillator.start(sekarang)
-    oscillator.stop(sekarang + 0.6)
+    oscillator.start(waktu)
+    oscillator.stop(waktu + durasi + 0.02)
+  }
 
-    nadaRef.current = (nadaRef.current + 1) % nada.length
+  function mainkanMusik() {
+    const i = langkahRef.current
+    const nada = melodi[i % melodi.length]
+
+    // Melodi utama
+    bunyikan(nada, 0.22, 0.055, 'triangle')
+
+    // Nada harmoni
+    if (i % 4 === 0) {
+      bunyikan(nada * 1.25, 0.65, 0.018, 'sine')
+    }
+
+    // Irama bass
+    if (i % 2 === 0) {
+      const nadaBass = bass[Math.floor(i / 2) % bass.length]
+      bunyikan(nadaBass, 0.35, 0.045, 'triangle')
+    }
+
+    // Bunyi ketukan ringan
+    if (i % 4 === 0) {
+      bunyikan(180, 0.08, 0.012, 'sine')
+    }
+
+    langkahRef.current = (i + 1) % melodi.length
   }
 
   async function toggleMusik() {
@@ -72,10 +109,10 @@ function MusikLatar() {
 
     await audio.resume()
 
-    nadaRef.current = 0
-    mainkanNada()
+    langkahRef.current = 0
+    mainkanMusik()
 
-    timerRef.current = setInterval(mainkanNada, 500)
+    timerRef.current = setInterval(mainkanMusik, 250)
     setAktif(true)
   }
 
@@ -112,6 +149,7 @@ function MusikLatar() {
     </button>
   )
 }
+
 
 function App() {
   const [identitas, setIdentitas] = useState(null)
